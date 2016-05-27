@@ -1,0 +1,16 @@
+[package]
+name = "sylph"
+version = "0.1.0"
+authors = ["Vincent Prouillet <vincent@wearewizards.io>"]
+
+[dependencies]
+clippy = {version = "~0.0.69", optional = true}
+regex = "0.1"
+
+[dependencies.hyper]
+version = "0.9"
+features = ["ssl", "serde-serialization"]
+
+[features]
+default = []
+dev = ["clippy"]
