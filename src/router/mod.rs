@@ -9,6 +9,8 @@ mod regex_router;
 
 pub type Params = HashMap<String, String>;
 pub type HandlerFn = fn(Request, Response, Params);
+// Remove the option later on
+pub type RequestHandler = Option<(HandlerFn, Params)>;
 
 
 #[derive(PartialEq, Eq, Debug, Hash)]
@@ -22,6 +24,7 @@ pub struct Route {
 // we want it
 pub trait Router {
     fn new() -> Self;
+    // Adding routes, with shortcuts for methods
     fn add_route(&mut self, method: Method, path: &str, handler: HandlerFn);
     fn get(&mut self, path: &str, handler: HandlerFn);
     fn post(&mut self, path: &str, handler: HandlerFn);
@@ -32,6 +35,8 @@ pub trait Router {
     fn head(&mut self, path: &str, handler: HandlerFn);
     // Mount another router at a prefix
     fn mount(&mut self, root_path: &str, router: &Self);
+
     // build can be a no-op depending on the router
     fn build(&mut self);
+    fn find_handler(&self, method: Method, path: &str) -> RequestHandler;
 }

@@ -3,13 +3,14 @@ use std::collections::HashMap;
 use hyper::method::Method;
 use regex::{Regex, RegexSet};
 
-use super::{Params, HandlerFn, Router, Route};
+use super::{Params, HandlerFn, Router, Route, RequestHandler};
 
 
 // Can't derive debug because of HandlerFn
 // TODO: do it manually?
 pub struct RegexRouter {
     paths: Vec<String>,
+    compiled_paths: Vec<Regex>,
     regexset: Option<RegexSet>,
     routes: HashMap<Route, HandlerFn>,
 }
@@ -19,6 +20,7 @@ impl Router for RegexRouter {
     fn new() -> RegexRouter {
         RegexRouter {
             paths: Vec::new(),
+            compiled_paths: Vec::new(),
             regexset: None,
             routes: HashMap::new()
         }
@@ -75,20 +77,56 @@ impl Router for RegexRouter {
     fn build(&mut self) {
         for (route, _) in &self.routes {
             // Check the regex is a valid one
-            Regex::new(&route.path).expect(&format!("{:?} is not a valid regex", route.path));
+            let re = Regex::new(&route.path).expect(&format!("{:?} is not a valid regex", route.path));
             self.paths.push(route.path.clone());
+            self.compiled_paths.push(re);
         }
 
         self.regexset = Some(
             RegexSet::new(self.paths.iter()).expect("Failed to create routes")
         );
     }
+
+    fn find_handler(&self, method: Method, uri: &str) -> RequestHandler {
+        let matches = self.regexset.as_ref().unwrap().matches(&uri);
+        let index = matches.iter().next();
+
+        match index {
+            Some(i) => {
+                let path = &self.paths[i];
+                let route = Route {path: path.to_string(), method: method};
+
+                match self.routes.get(&route) {
+                    Some(h) => {
+                        let compiled_path = &self.compiled_paths[i];
+                        let caps = compiled_path.captures(uri).unwrap();
+                        let mut params = HashMap::new();
+                        // TODO: work for non-named captures somehow?
+                        for cap in caps.iter_named() {
+                            params.insert(cap.0.to_string(), cap.1.unwrap().to_string());
+                        }
+                        Some((*h, params))
+                    },
+                    None => {
+                        // TODO: NotAllowed
+                        None
+                    }
+                }
+            },
+            None =>  {
+                // TODO: NotFound
+                None
+            }
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use hyper::method::Method;
     use hyper::server::{Request, Response};
-    use super::*;
+    use super::{RegexRouter};
+    use router::{Params, Router};
 
     fn dummy(_: Request, _: Response, _: Params) {
         // Nothing
@@ -123,6 +161,18 @@ mod tests {
         router.build();
 
         assert!(router.regexset.unwrap().is_match("/api/users"));
+    }
+
+    #[test]
+    fn can_find_handler() {
+        let mut router = RegexRouter::new();
+        router.get("/hello", dummy);
+        router.get(r"/(?P<year>\d{4})", dummy);
+        router.build();
+
+        let found = router.find_handler(Method::Get, "/2016");
+        assert_eq!(found.is_some(), true);
+        assert_eq!(found.unwrap().1.get("year").unwrap().to_string(), "2016".to_string());
     }
 
     #[test]
