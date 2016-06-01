@@ -1,31 +1,23 @@
 use std::collections::HashMap;
 
 use hyper::method::Method;
-use hyper::server::{Handler, Request, Response};
-
 use regex::{Regex, RegexSet};
 
+use super::{Params, HandlerFn, Router, Route};
 
-pub type Params = HashMap<String, String>;
-pub type HandlerFn = fn(Request, Response, Params);
-
-
-#[derive(PartialEq, Eq, Debug, Hash)]
-pub struct Route {
-    path: String,
-    method: Method
-}
 
 // Can't derive debug because of HandlerFn
-pub struct Router {
+// TODO: do it manually?
+pub struct RegexRouter {
     paths: Vec<String>,
     regexset: Option<RegexSet>,
     routes: HashMap<Route, HandlerFn>,
 }
 
-impl Router {
-    fn new() -> Router {
-        Router {
+
+impl Router for RegexRouter {
+    fn new() -> RegexRouter {
+        RegexRouter {
             paths: Vec::new(),
             regexset: None,
             routes: HashMap::new()
@@ -42,48 +34,41 @@ impl Router {
         self.routes.insert(route, handler);
     }
 
-    pub fn put(&mut self, path: &str, handler: HandlerFn) {
+    fn put(&mut self, path: &str, handler: HandlerFn) {
         self.add_route(Method::Put, path, handler);
     }
 
-    pub fn post(&mut self, path: &str, handler: HandlerFn) {
+    fn post(&mut self, path: &str, handler: HandlerFn) {
         self.add_route(Method::Post, path, handler);
     }
 
-    pub fn patch(&mut self, path: &str, handler: HandlerFn) {
+    fn patch(&mut self, path: &str, handler: HandlerFn) {
         self.add_route(Method::Patch, path, handler);
     }
 
-    pub fn get(&mut self, path: &str, handler: HandlerFn) {
+    fn get(&mut self, path: &str, handler: HandlerFn) {
         self.add_route(Method::Get, path, handler);
     }
 
-    pub fn delete(&mut self, path: &str, handler: HandlerFn) {
+    fn delete(&mut self, path: &str, handler: HandlerFn) {
         self.add_route(Method::Delete, path, handler);
     }
 
-    pub fn options(&mut self, path: &str, handler: HandlerFn) {
+    fn options(&mut self, path: &str, handler: HandlerFn) {
         self.add_route(Method::Options, path, handler);
     }
 
-    pub fn head(&mut self, path: &str, handler: HandlerFn) {
+    fn head(&mut self, path: &str, handler: HandlerFn) {
         self.add_route(Method::Head, path, handler);
     }
 
-    pub fn mount(&mut self, root_path: &str, router: &Router) {
+    fn mount(&mut self, root_path: &str, router: &RegexRouter) {
         for (route, handler) in &router.routes {
             self.add_route(
                 route.method.clone(),
                 &format!("{}{}", root_path, route.path),
                 *handler
             );
-        }
-    }
-
-    // Debug fn, can be deleted later
-    fn dump_routes(&self) {
-        for (route, _) in &self.routes {
-            println!("{:?} - {:?}", route.method, route.path);
         }
     }
 
@@ -111,7 +96,7 @@ mod tests {
 
     #[test]
     fn works_with_one_route() {
-        let mut router = Router::new();
+        let mut router = RegexRouter::new();
         router.get("/hello", dummy);
         router.build();
 
@@ -120,7 +105,7 @@ mod tests {
 
     #[test]
     fn works_with_several_routes() {
-        let mut router = Router::new();
+        let mut router = RegexRouter::new();
         router.get("/hello", dummy);
         router.get("/hey", dummy);
         router.build();
@@ -130,9 +115,9 @@ mod tests {
 
     #[test]
     fn can_mount_other_router() {
-        let mut router = Router::new();
+        let mut router = RegexRouter::new();
         router.get("/bla", dummy);
-        let mut api_router = Router::new();
+        let mut api_router = RegexRouter::new();
         api_router.get("/users", dummy);
         router.mount("/api", &api_router);
         router.build();
@@ -143,7 +128,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn panics_with_incorrect_regex() {
-        let mut router = Router::new();
+        let mut router = RegexRouter::new();
         router.get("/[a-", dummy);
         router.build();
     }
@@ -151,7 +136,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn panics_with_path_not_starting_with_slash() {
-        let mut router = Router::new();
+        let mut router = RegexRouter::new();
         router.get("hey", dummy);
         router.build();
     }
