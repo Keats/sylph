@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 
 use hyper::method::Method;
-use hyper::server::{Request, Response};
-
 
 pub mod regex_router;
 

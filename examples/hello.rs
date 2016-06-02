@@ -1,11 +1,9 @@
 extern crate sylph;
-extern crate hyper;
 
-use hyper::server::{Request, Response};
 use sylph::{Sylph, Router, RegexRouter, HttpRequest, HttpResponse, SylphResult};
 
 
-fn dummy(req: &mut HttpRequest<RegexRouter>) -> SylphResult<HttpResponse> {
+fn dummy(_: &mut HttpRequest<RegexRouter>) -> SylphResult<HttpResponse> {
     Ok(HttpResponse::new())
 }
 

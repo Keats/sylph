@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use std::io::{self, Read, Write};
+use std::collections::HashMap;
 
 use hyper::{Next, Encoder, Decoder, RequestUri, Headers, HttpVersion};
 use hyper::server::{Handler, Request, Response};
@@ -10,8 +11,7 @@ use hyper::status::StatusCode;
 
 use response::HttpResponse;
 use errors::{SylphResult, SylphError};
-use router::Router;
-use sylph::Sylph;
+use router::{Router, Params};
 
 
 pub struct HttpRequest<'a, R: Router + 'a> {
@@ -20,6 +20,7 @@ pub struct HttpRequest<'a, R: Router + 'a> {
     method: Method,
     version: HttpVersion,
     headers: Headers,
+    params: Params,
     // our response
     response: SylphResult<HttpResponse>,
     // hyper details
@@ -37,6 +38,7 @@ impl<'a, R: Router> HttpRequest<'a, R> {
             method: Default::default(),
             version: Default::default(),
             headers: Default::default(),
+            params: HashMap::new(),
             response: Err(SylphError::NotFound),
             body_length: 0,
             buf: vec![0; 4096],
@@ -47,7 +49,10 @@ impl<'a, R: Router> HttpRequest<'a, R> {
 
     fn call_handler(&mut self) {
         match self.router.find_handler(self.method.clone(), &self.path) {
-            Ok((handler_fn, params)) => self.response = handler_fn(self),
+            Ok((handler_fn, params)) => {
+                self.params = params;
+                self.response = handler_fn(self);
+            },
             Err(e) => self.response = Err(e),
         };
     }

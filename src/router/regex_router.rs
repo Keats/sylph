@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use hyper::method::Method;
 use regex::{Regex, RegexSet};
 
-use errors::{SylphResult, SylphError};
-use super::{Params, HandlerFn, Router, Route, RequestHandler};
+use errors::SylphError;
+use super::{HandlerFn, Router, Route, RequestHandler};
 
 
 // Can't derive debug because of HandlerFn
@@ -120,35 +120,18 @@ impl Router for RegexRouter {
     }
 }
 
-// impl Clone for RegexRouter {
-//     fn clone(&self) -> RegexRouter {
-//         // Can't clone hashmap with fn inside
-//         let mut routes = HashMap::new();
-//         // for (route, handler) in &self.routes {
-//         //     routes.insert(*route, *handler);
-//         // }
-
-//         RegexRouter {
-//             paths: self.paths.clone(),
-//             compiled_paths: self.compiled_paths.clone(),
-//             regexset: self.regexset.clone(),
-//             routes: routes
-//         }
-//     }
-// }
 
 #[cfg(test)]
 mod tests {
     use hyper::method::Method;
-    use hyper::server::{Request, Response};
     use super::{RegexRouter};
 
     use request::HttpRequest;
     use response::HttpResponse;
     use errors::SylphResult;
-    use router::{Params, Router};
+    use router::Router;
 
-    fn dummy(req: &mut HttpRequest<RegexRouter>) -> SylphResult<HttpResponse> {
+    fn dummy(_: &mut HttpRequest<RegexRouter>) -> SylphResult<HttpResponse> {
         Ok(HttpResponse::new())
     }
 
