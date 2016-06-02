@@ -9,7 +9,6 @@ regex = "0.1"
 
 [dependencies.hyper]
 git = "https://github.com/hyperium/hyper.git"
-features = ["ssl", "serde-serialization"]
 
 [features]
 default = []
