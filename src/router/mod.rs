@@ -22,7 +22,7 @@ pub struct Route {
 
 // trait that a router needs to implement, means we can add a TrieRouter or a routing
 // like Flask if we want to
-pub trait Router {
+pub trait Router: Sync + Send {
     fn new() -> Self;
     // Adding routes, with shortcuts for methods
     fn add_route(&mut self, method: Method, path: &str, handler: HandlerFn);

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use hyper::server::{Server};
 use hyper::net::HttpListener;
 use num_cpus;
@@ -19,14 +21,17 @@ impl<T: Router> Sylph<T> {
         }
     }
 
-    pub fn listen(&self, url: &str) {
+    pub fn listen(self, url: &str) {
         let listener = HttpListener::bind(&url.parse().unwrap()).unwrap();
         let mut handles = Vec::new();
+        let arc_router = Arc::new(Box::new(self.router));
 
         for _ in 0..num_cpus::get() {
             let listener = listener.try_clone().unwrap();
             handles.push(::std::thread::spawn(move || {
-                Server::new(listener).handle(|_| HttpRequest::new()).unwrap();
+                Server::new(listener)
+                    .handle(|_| HttpRequest::new(arc_router.clone()))
+                    .unwrap();
             }));
         }
         println!("Listening on {}", url);
