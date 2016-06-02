@@ -14,3 +14,5 @@ pub use sylph::Sylph;
 pub use router::{Router, Params};
 pub use router::regex_router::RegexRouter;
 pub use errors::{SylphError, SylphResult};
+pub use request::HttpRequest;
+pub use response::HttpResponse;

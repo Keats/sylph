@@ -9,13 +9,14 @@ use request::HttpRequest;
 
 
 #[derive(Debug)]
-pub struct Sylph<T: Router> {
-    router: T,
+pub struct Sylph<R: Router + 'static> {
+    router: R,
 }
 
 
-impl<T: Router> Sylph<T> {
-    pub fn new(router: T) -> Sylph<T> {
+impl<R: Router> Sylph<R> {
+    pub fn new(router: R) -> Sylph<R> {
+        // TODO: check the router is valid (build() called)
         Sylph {
             router: router,
         }
@@ -24,13 +25,14 @@ impl<T: Router> Sylph<T> {
     pub fn listen(self, url: &str) {
         let listener = HttpListener::bind(&url.parse().unwrap()).unwrap();
         let mut handles = Vec::new();
-        let arc_router = Arc::new(Box::new(self.router.clone()));
+        let arc_router = Arc::new(Box::new(self.router));
 
         for _ in 0..num_cpus::get() {
             let listener = listener.try_clone().unwrap();
+            let router = arc_router.clone();
             handles.push(::std::thread::spawn(move || {
                 Server::new(listener)
-                    .handle(|_| HttpRequest::new(arc_router.clone()))
+                    .handle(|_| HttpRequest::new(&router))
                     .unwrap();
             }));
         }

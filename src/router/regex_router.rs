@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use hyper::method::Method;
 use regex::{Regex, RegexSet};
 
+use errors::{SylphResult, SylphError};
 use super::{Params, HandlerFn, Router, Route, RequestHandler};
 
 
@@ -12,7 +13,7 @@ pub struct RegexRouter {
     paths: Vec<String>,
     compiled_paths: Vec<Regex>,
     regexset: Option<RegexSet>,
-    routes: HashMap<Route, HandlerFn>,
+    routes: HashMap<Route, HandlerFn<RegexRouter>>,
 }
 
 
@@ -26,7 +27,7 @@ impl Router for RegexRouter {
         }
     }
 
-    fn add_route(&mut self, method: Method, path: &str, handler: HandlerFn) {
+    fn add_route(&mut self, method: Method, path: &str, handler: HandlerFn<RegexRouter>) {
         // Some sanity checks
         // Ideally we would check that each regex has a named capture but it's hard
         if path.len() == 0 || path.chars().nth(0).unwrap() != '/' {
@@ -36,31 +37,31 @@ impl Router for RegexRouter {
         self.routes.insert(route, handler);
     }
 
-    fn put(&mut self, path: &str, handler: HandlerFn) {
+    fn put(&mut self, path: &str, handler: HandlerFn<RegexRouter>) {
         self.add_route(Method::Put, path, handler);
     }
 
-    fn post(&mut self, path: &str, handler: HandlerFn) {
+    fn post(&mut self, path: &str, handler: HandlerFn<RegexRouter>) {
         self.add_route(Method::Post, path, handler);
     }
 
-    fn patch(&mut self, path: &str, handler: HandlerFn) {
+    fn patch(&mut self, path: &str, handler: HandlerFn<RegexRouter>) {
         self.add_route(Method::Patch, path, handler);
     }
 
-    fn get(&mut self, path: &str, handler: HandlerFn) {
+    fn get(&mut self, path: &str, handler: HandlerFn<RegexRouter>) {
         self.add_route(Method::Get, path, handler);
     }
 
-    fn delete(&mut self, path: &str, handler: HandlerFn) {
+    fn delete(&mut self, path: &str, handler: HandlerFn<RegexRouter>) {
         self.add_route(Method::Delete, path, handler);
     }
 
-    fn options(&mut self, path: &str, handler: HandlerFn) {
+    fn options(&mut self, path: &str, handler: HandlerFn<RegexRouter>) {
         self.add_route(Method::Options, path, handler);
     }
 
-    fn head(&mut self, path: &str, handler: HandlerFn) {
+    fn head(&mut self, path: &str, handler: HandlerFn<RegexRouter>) {
         self.add_route(Method::Head, path, handler);
     }
 
@@ -87,7 +88,7 @@ impl Router for RegexRouter {
         );
     }
 
-    fn find_handler(&self, method: Method, uri: &str) -> RequestHandler {
+    fn find_handler(&self, method: Method, uri: &str) -> RequestHandler<RegexRouter> {
         let matches = self.regexset.as_ref().unwrap().matches(&uri);
         let index = matches.iter().next();
 
@@ -105,48 +106,50 @@ impl Router for RegexRouter {
                         for cap in caps.iter_named() {
                             params.insert(cap.0.to_string(), cap.1.unwrap().to_string());
                         }
-                        Some((*h, params))
+                        Ok((*h, params))
                     },
                     None => {
-                        // TODO: NotAllowed
-                        None
+                        Err(SylphError::NotAllowed)
                     }
                 }
             },
             None =>  {
-                // TODO: NotFound
-                None
+                Err(SylphError::NotFound)
             }
         }
     }
 }
 
-impl Clone for RegexRouter {
-    fn clone(&self) -> RegexRouter {
-        // Can't clone hashmap with fn inside
-        let mut routes = HashMap::new();
-        for (route, handler) in &self.routes {
-            routes.insert(*route, *handler);
-        }
+// impl Clone for RegexRouter {
+//     fn clone(&self) -> RegexRouter {
+//         // Can't clone hashmap with fn inside
+//         let mut routes = HashMap::new();
+//         // for (route, handler) in &self.routes {
+//         //     routes.insert(*route, *handler);
+//         // }
 
-        RegexRouter {
-            paths: self.paths.clone(),
-            compiled_paths: self.compiled_paths.clone(),
-            regexset: self.regexset.clone(),
-            routes: routes
-        }
-    }
-}
+//         RegexRouter {
+//             paths: self.paths.clone(),
+//             compiled_paths: self.compiled_paths.clone(),
+//             regexset: self.regexset.clone(),
+//             routes: routes
+//         }
+//     }
+// }
 
 #[cfg(test)]
 mod tests {
     use hyper::method::Method;
     use hyper::server::{Request, Response};
     use super::{RegexRouter};
+
+    use request::HttpRequest;
+    use response::HttpResponse;
+    use errors::SylphResult;
     use router::{Params, Router};
 
-    fn dummy(_: Request, _: Response, _: Params) {
-        // Nothing
+    fn dummy(req: &mut HttpRequest<RegexRouter>) -> SylphResult<HttpResponse> {
+        Ok(HttpResponse::new())
     }
 
     #[test]
@@ -188,7 +191,7 @@ mod tests {
         router.build();
 
         let found = router.find_handler(Method::Get, "/2016");
-        assert_eq!(found.is_some(), true);
+        assert_eq!(found.is_ok(), true);
         assert_eq!(found.unwrap().1.get("year").unwrap().to_string(), "2016".to_string());
     }
 

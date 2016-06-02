@@ -14,14 +14,13 @@ use router::Router;
 use sylph::Sylph;
 
 
-pub struct HttpRequest<T: Router> {
-    router: Arc<Box<T>>,
+pub struct HttpRequest<'a, R: Router + 'a> {
+    router: &'a Arc<Box<R>>,
     path: String,
     method: Method,
     version: HttpVersion,
     headers: Headers,
     // our response
-    // TODO: make that a result
     response: SylphResult<HttpResponse>,
     // hyper details
     buf: Vec<u8>,
@@ -30,8 +29,8 @@ pub struct HttpRequest<T: Router> {
     write_pos: usize,
 }
 
-impl<T: Router> HttpRequest<T> {
-    pub fn new(router: Arc<Box<T>>) -> HttpRequest<T> {
+impl<'a, R: Router> HttpRequest<'a, R> {
+    pub fn new(router: &'a Arc<Box<R>>) -> HttpRequest<R> {
         HttpRequest {
             router: router,
             path: String::new(),
@@ -45,9 +44,16 @@ impl<T: Router> HttpRequest<T> {
             write_pos: 0,
         }
     }
+
+    fn call_handler(&mut self) {
+        match self.router.find_handler(self.method.clone(), &self.path) {
+            Ok((handler_fn, params)) => self.response = handler_fn(self),
+            Err(e) => self.response = Err(e),
+        };
+    }
 }
 
-impl<T: Router> Handler<HttpStream> for HttpRequest<T> {
+impl<'a, R: Router> Handler<HttpStream> for HttpRequest<'a, R> {
     // First point of entry, we need to check whether we have a body to parse
     // or not. If we don't just send it to the router directly
     fn on_request(&mut self, req: Request) -> Next {
@@ -66,7 +72,7 @@ impl<T: Router> Handler<HttpStream> for HttpRequest<T> {
                 if has_body {
                     Next::read_and_write()
                 } else {
-                    // TODO: call endpoint
+                    self.call_handler();
                     Next::write()
                 }
             },
@@ -79,14 +85,14 @@ impl<T: Router> Handler<HttpStream> for HttpRequest<T> {
         match transport.read(&mut self.buf) {
             // EOF
             Ok(0) => {
-                // TODO: call endpoint
+                self.call_handler();
                 Next::write()
             },
             // more to read
             Ok(n) => {
                 self.read_pos += n;
                 if self.body_length <= self.read_pos as u64 {
-                    // TODO: call endpoint
+                    self.call_handler();
                     Next::write()
                 } else {
                     Next::read_and_write()
