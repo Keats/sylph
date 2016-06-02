@@ -4,12 +4,12 @@ use hyper::method::Method;
 use hyper::server::{Request, Response};
 
 
-mod regex_router;
+pub mod regex_router;
 
 
 pub type Params = HashMap<String, String>;
 pub type HandlerFn = fn(Request, Response, Params);
-// Remove the option later on
+// Remove the option later on, use a Result instead of Option?
 pub type RequestHandler = Option<(HandlerFn, Params)>;
 
 
@@ -20,8 +20,8 @@ pub struct Route {
 }
 
 
-// trait that a router needs to implement, means we can add a TrieRouter if
-// we want it
+// trait that a router needs to implement, means we can add a TrieRouter or a routing
+// like Flask if we want to
 pub trait Router {
     fn new() -> Self;
     // Adding routes, with shortcuts for methods

@@ -1,8 +1,9 @@
-use hyper::server::{Server, Handler, Request, Response};
-use hyper::net::HttpStream;
-use hyper::{Next, Encoder, Decoder};
+use hyper::server::{Server};
+use hyper::net::HttpListener;
+use num_cpus;
 
-use router::{Router};
+use router::Router;
+use request::HttpRequest;
 
 
 #[derive(Debug)]
@@ -12,33 +13,26 @@ pub struct Sylph<T: Router> {
 
 
 impl<T: Router> Sylph<T> {
-    fn new(router: T) -> Sylph<T> {
+    pub fn new(router: T) -> Sylph<T> {
         Sylph {
             router: router,
         }
     }
 
-    fn listen(&self, url: &str) {
-        let server = Server::http(&url.parse().unwrap()).unwrap();
-        // server.run();
-    }
-}
+    pub fn listen(&self, url: &str) {
+        let listener = HttpListener::bind(&url.parse().unwrap()).unwrap();
+        let mut handles = Vec::new();
 
+        for _ in 0..num_cpus::get() {
+            let listener = listener.try_clone().unwrap();
+            handles.push(::std::thread::spawn(move || {
+                Server::new(listener).handle(|_| HttpRequest::new()).unwrap();
+            }));
+        }
+        println!("Listening on {}", url);
 
-impl<T: Router> Handler<HttpStream> for Sylph<T> {
-    fn on_request(&mut self, _: Request) -> Next {
-        Next::write()
-    }
-
-    fn on_request_readable(&mut self, _: &mut Decoder<HttpStream>) -> Next {
-        Next::write()
-    }
-
-    fn on_response(&mut self, response: &mut Response) -> Next {
-        Next::write()
-    }
-
-    fn on_response_writable(&mut self, encoder: &mut Encoder<HttpStream>) -> Next {
-        Next::end()
+        for handle in handles {
+            handle.join().unwrap();
+        }
     }
 }

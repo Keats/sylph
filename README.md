@@ -28,6 +28,6 @@ fn profile(context: Context) -> Result<HttpResponse> {
 ```
 
 Should we not parse captures at first but have a method in HttpRequest to do it?
-Saves the hashmap creation and avoids parsing capture unless wanted (if possible)
+Saves the hashmap creation and avoids parsing capture unless wanted (if possible) but then it limits to a RegexRouter since we don't want to compile it again
 
 We need a way to get the routes anywwhere to reverse and write the url_for Tera fn and i have no idea how to do that (yet). Pass the router to everything and add a `reverse` fn to the Router trait?
