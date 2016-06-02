@@ -5,8 +5,8 @@ See https://github.com/sappworks/sapper/blob/master/src/sapp.rs#L282 for inspira
 It should have a function to get query params in hashmap and the data from the original
 request
 - add HttpResponse that has some shortcuts for json (jsonify!() ?) etc
-- add benches to see if it's not straying too far from hyper (90k/s)
-- add 404/405 with 404 configurable 404 to router
+- add benches to see if it's not straying too far from hyper (90k/s on my laptop)
+- add configurable 403/404/405/500
 - add names to urls and reverse_url method -> is that needed?
 - static files handling
 - file upload

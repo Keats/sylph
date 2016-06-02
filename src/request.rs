@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::io::{self, Read, Write};
 
 use hyper::{Next, Encoder, Decoder, RequestUri, Headers, HttpVersion};
@@ -9,9 +10,12 @@ use hyper::status::StatusCode;
 
 use response::HttpResponse;
 use errors::{SylphResult, SylphError};
+use router::Router;
+use sylph::Sylph;
 
 
-pub struct HttpRequest {
+pub struct HttpRequest<T: Router> {
+    router: Arc<Box<T>>,
     path: String,
     method: Method,
     version: HttpVersion,
@@ -26,9 +30,10 @@ pub struct HttpRequest {
     write_pos: usize,
 }
 
-impl HttpRequest {
-    pub fn new() -> HttpRequest {
+impl<T: Router> HttpRequest<T> {
+    pub fn new(router: Arc<Box<T>>) -> HttpRequest<T> {
         HttpRequest {
+            router: router,
             path: String::new(),
             method: Default::default(),
             version: Default::default(),
@@ -42,7 +47,7 @@ impl HttpRequest {
     }
 }
 
-impl Handler<HttpStream> for HttpRequest {
+impl<T: Router> Handler<HttpStream> for HttpRequest<T> {
     // First point of entry, we need to check whether we have a body to parse
     // or not. If we don't just send it to the router directly
     fn on_request(&mut self, req: Request) -> Next {

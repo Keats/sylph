@@ -121,6 +121,23 @@ impl Router for RegexRouter {
     }
 }
 
+impl Clone for RegexRouter {
+    fn clone(&self) -> RegexRouter {
+        // Can't clone hashmap with fn inside
+        let mut routes = HashMap::new();
+        for (route, handler) in &self.routes {
+            routes.insert(*route, *handler);
+        }
+
+        RegexRouter {
+            paths: self.paths.clone(),
+            compiled_paths: self.compiled_paths.clone(),
+            regexset: self.regexset.clone(),
+            routes: routes
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use hyper::method::Method;
